@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>FilterJobs</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="backdrop">
+      <div class="orb orb-one"></div>
+      <div class="orb orb-two"></div>
+      <div class="orb orb-three"></div>
+      <div class="grid-sheen"></div>
+    </div>
+
+    <div class="app">
+      <header class="topbar">
+        <div class="brand">
+          <div class="logo">FJ</div>
+          <div class="brand-text">
+            <h1>FilterJobs</h1>
+            <p>Turn job chaos into a calm, ranked shortlist.</p>
+          </div>
+        </div>
+        <div class="status">
+          <span class="pill" id="apiStatus">API: unknown</span>
+          <button class="ghost" id="refreshBtn" type="button">Refresh</button>
+        </div>
+      </header>
+
+      <main class="grid">
+        <section class="panel ingest">
+          <div class="panel-head">
+            <h2>Workspace</h2>
+            <p>Connect to your local API and manage your resume + parsing.</p>
+          </div>
+
+          <label class="field">
+            <span>API base URL</span>
+            <input id="apiBase" type="text" placeholder="http://localhost:8000" />
+          </label>
+
+          <div class="divider"></div>
+
+          <div class="panel-head">
+            <h3>Paste bookmarklet JSON</h3>
+            <p>If you use the bookmarklet (clipboard), paste the JSON here and ingest.</p>
+          </div>
+          <label class="field">
+            <span>Bookmarklet payload</span>
+            <textarea id="bookmarkletBox" rows="4" placeholder='{"v":1,"captured_at":"...","url":"...","page_title":"...","description_text":"..."}'></textarea>
+          </label>
+          <div class="actions">
+            <button class="secondary" id="ingestBookmarkletBtn" type="button">Ingest</button>
+            <span class="hint" id="bookmarkletStatus"></span>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="panel-head">
+            <h3>Resume context</h3>
+            <p>Upload a PDF resume. We extract text locally before sending.</p>
+          </div>
+
+          <label class="field">
+            <span>Resume PDF</span>
+            <input id="resumeFile" type="file" accept="application/pdf" />
+          </label>
+
+          <div class="actions">
+            <button class="primary" id="uploadResumeBtn" type="button">Upload resume</button>
+          </div>
+          <div class="hint" id="resumeStatus">No resume uploaded yet.</div>
+
+          <div class="divider"></div>
+
+          <div class="panel-head">
+            <h3>Parse jobs</h3>
+            <p>Extract structured requirements from job descriptions.</p>
+          </div>
+
+          <div class="actions">
+            <button class="primary" id="parseAllBtn" type="button">Parse all jobs</button>
+            <button class="secondary" id="parseSelectedBtn" type="button">Parse selected</button>
+            <button class="secondary" id="forceParseAllBtn" type="button">Force re-parse all</button>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="panel-head">
+            <h3>Begin the cull</h3>
+            <p>Rank all jobs by fit and pick the top 10.</p>
+          </div>
+
+          <div class="actions">
+            <button class="primary" id="cullAllBtn" type="button">Begin the cull</button>
+            <button class="secondary" id="cullSelectedBtn" type="button">Cull selected</button>
+          </div>
+
+          <div class="hint" id="selectionHint">0 selected</div>
+
+          <div class="divider"></div>
+
+          <label class="toggle">
+            <input id="analyzedOnly" type="checkbox" />
+            <span>Show analyzed only</span>
+          </label>
+
+          <div class="notice" id="toast"></div>
+        </section>
+
+        <section class="panel jobs">
+          <div class="panel-head">
+            <h2>Job board</h2>
+            <p id="jobCount">Loading jobs...</p>
+          </div>
+
+          <div class="job-list" id="jobList"></div>
+        </section>
+      </main>
+    </div>
+
+    <div class="modal hidden" id="detailModal" aria-hidden="true">
+      <div class="modal-card">
+        <div class="modal-head">
+          <div>
+            <h3 id="detailTitle">Job details</h3>
+            <p id="detailMeta"></p>
+          </div>
+          <div class="actions small">
+            <button class="primary" id="saveJobBtn" type="button">Save changes</button>
+            <button class="danger" id="deleteJobBtn" type="button">Delete</button>
+            <button class="ghost" id="closeModal" type="button">Close</button>
+          </div>
+        </div>
+        <div class="modal-body">
+          <section>
+            <h4>Overview</h4>
+            <div class="field-grid">
+              <label class="field">
+                <span>Title</span>
+                <input id="detailTitleInput" type="text" />
+              </label>
+              <label class="field">
+                <span>Company</span>
+                <input id="detailCompanyInput" type="text" />
+              </label>
+              <label class="field">
+                <span>Location</span>
+                <input id="detailLocationInput" type="text" />
+              </label>
+              <label class="field">
+                <span>Job URL</span>
+                <input id="detailUrlInput" type="text" />
+              </label>
+            </div>
+            <div class="hint">
+              <a id="detailUrlLink" href="#" target="_blank" rel="noreferrer">Open posting</a>
+            </div>
+          </section>
+          <section>
+            <h4>Recommendation</h4>
+            <p id="detailRecommendation">-</p>
+          </section>
+          <section>
+            <h4>Reasoning</h4>
+            <p id="detailReasoning">-</p>
+          </section>
+          <section>
+            <h4>Downsides</h4>
+            <p id="detailDownsides">-</p>
+          </section>
+          <section>
+            <h4>Raw text</h4>
+            <pre id="detailRaw"></pre>
+          </section>
+          <section>
+            <h4>Structured Requirements</h4>
+            <div id="detailStructured"></div>
+          </section>
+          <section>
+            <h4>Analysis payload</h4>
+            <pre id="detailAnalysis"></pre>
+          </section>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" crossorigin="anonymous"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
