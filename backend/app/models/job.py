@@ -7,7 +7,7 @@ import uuid
 from datetime import datetime
 from typing import Any, Optional
 
-from sqlalchemy import DateTime, Enum, Integer, JSON, String, Text
+from sqlalchemy import DateTime, Enum, Float, Integer, JSON, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
@@ -53,6 +53,10 @@ class Job(Base):
     # Structured parsing
     structured_requirements: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     parsed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # Preference scoring (Embeddings + Vector ELO)
+    preference_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    embedding: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
 
     # Metadata
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

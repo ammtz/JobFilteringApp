@@ -8,7 +8,7 @@ from typing import Optional, Protocol
 
 from app.core.config import settings
 from app.models.job import Job
-from app.services.llm import LLMError, openai_chat_json
+from app.services.llm import LLMError, claude_chat_json
 from app.services.prompts import build_analyzer_messages
 
 SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+")
@@ -111,12 +111,12 @@ class StubAnalyzer:
         )
 
 
-class OpenAIAnalyzer:
+class ClaudeAnalyzer:
     def analyze(self, job: Job) -> AnalyzerResult:
         messages = build_analyzer_messages(job)
-        result = openai_chat_json(messages)
+        result = claude_chat_json(messages)
         if not isinstance(result, dict):
-            raise LLMError("OpenAI response missing JSON object")
+            raise LLMError("Claude response missing JSON object")
         score = _normalize_score(result.get("score"))
         recommended_resume = _normalize_resume(result.get("recommended_resume"))
         guidance_text = str(result.get("guidance_3_sentences", ""))
@@ -130,6 +130,6 @@ class OpenAIAnalyzer:
 
 
 def get_analyzer() -> Analyzer:
-    if settings.OPENAI_API_KEY:
-        return OpenAIAnalyzer()
+    if settings.ANTHROPIC_API_KEY:
+        return ClaudeAnalyzer()
     return StubAnalyzer()

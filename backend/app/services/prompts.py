@@ -23,6 +23,38 @@ ANALYZER_USER_TEMPLATE = (
 )
 
 
+BATCH_SORT_SYSTEM_PROMPT = (
+    "You are a job analyst. The candidate's resume is provided. "
+    "Given a JSON array of job postings, return a JSON array (same length, same job_ids) "
+    "with one object per job. Each object must have exactly these keys: "
+    "job_id, about_summary, experience_requirements, expertise_requirements, "
+    "business_cultural_requirements, sponsorship_requirements, work_location_requirements, "
+    "education_requirements (all strings or null), "
+    "score (integer 0-100: how well the candidate's resume fits this specific role), "
+    "resume_key (short lowercase slug, 1-3 words, no spaces), "
+    "guidance_3_sentences (exactly 3 sentences: "
+    "#1 good bet + which resume variant to use; "
+    "#2 why it beats other options, mention comparison; "
+    "#3 one clear downside or tradeoff). "
+    "Return ONLY the JSON array, no other text."
+)
+
+
+def build_batch_sort_messages(
+    resume_text: str, jobs: List[Dict]
+) -> List[Dict[str, str]]:
+    """Build messages for a batch sort+score call covering up to 20 jobs at once."""
+    import json as _json
+    user_content = (
+        f"Candidate resume (use this to score fit for each job):\n{resume_text[:5000]}\n\n"
+        f"Jobs to analyse:\n{_json.dumps(jobs, ensure_ascii=True)}"
+    )
+    return [
+        {"role": "system", "content": BATCH_SORT_SYSTEM_PROMPT},
+        {"role": "user", "content": user_content},
+    ]
+
+
 def build_analyzer_messages(job: Job) -> List[Dict[str, str]]:
     job_payload = {
         "url": job.url,

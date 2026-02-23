@@ -8,6 +8,7 @@ from uuid import UUID
 from flask import Blueprint, jsonify, request
 from sqlalchemy.exc import IntegrityError
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.models.job import Job
 from app.services.job_parser import parse_job_description
@@ -80,6 +81,7 @@ def _job_base_fields(job: Job) -> dict:
         "location": job.location,
         "url": job.url,
         "score": job.score,
+        "preference_score": job.preference_score,
         "resume_recommendation": job.resume_recommendation,
         "reasoning": job.reasoning,
         "downsides": job.downsides,
@@ -316,6 +318,14 @@ def parse_jobs():
             if not to_parse:
                 return jsonify({"message": "All jobs already have structured requirements.", "parsed_count": 0})
 
+            if len(to_parse) > settings.MAX_BATCH_JOBS:
+                return jsonify({
+                    "detail": (
+                        f"Batch too large: {len(to_parse)} jobs would each trigger an LLM call. "
+                        f"Select ≤{settings.MAX_BATCH_JOBS} at a time, or raise MAX_BATCH_JOBS in .env."
+                    )
+                }), 422
+
             parsed_count = 0
             errors = []
             for job in to_parse:
@@ -362,6 +372,14 @@ def analyze_jobs():
         jobs = query.all()
         if not jobs:
             return jsonify({"message": "No jobs to analyze", "analyzed_count": 0})
+
+        if len(jobs) > settings.MAX_BATCH_JOBS:
+            return jsonify({
+                "detail": (
+                    f"Batch too large: {len(jobs)} jobs would each trigger an LLM call. "
+                    f"Select ≤{settings.MAX_BATCH_JOBS} at a time, or raise MAX_BATCH_JOBS in .env."
+                )
+            }), 422
 
         analyzer = get_analyzer()
         now = datetime.now(timezone.utc)

@@ -12,12 +12,15 @@ class Settings:
         "postgresql+psycopg://filterjobs:filterjobs_dev@localhost:5432/filterjobs",
     )
 
-    # LLM: OpenAI-compatible API (OpenAI, or open-source/local e.g. Ollama, LiteLLM, vLLM).
-    # For local/open-source: set OPENAI_BASE_URL to your server (e.g. http://localhost:11434/v1),
-    # OPENAI_MODEL to model name; OPENAI_API_KEY can be empty if the server does not require auth.
-    OPENAI_API_KEY: str | None = os.getenv("OPENAI_API_KEY") or None
-    OPENAI_BASE_URL: str = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
-    OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+    # LLM: Anthropic Claude API
+    # Set ANTHROPIC_API_KEY to your Anthropic API key (from console.anthropic.com).
+    # Optionally override ANTHROPIC_MODEL (default: claude-opus-4-6).
+    ANTHROPIC_API_KEY: str | None = os.getenv("ANTHROPIC_API_KEY") or None
+    ANTHROPIC_MODEL: str = os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5")
+
+    # Cost guardrail: max jobs processed per LLM batch call (analyze / parse).
+    # Raise via MAX_BATCH_JOBS env var when you need to process more.
+    MAX_BATCH_JOBS: int = int(os.getenv("MAX_BATCH_JOBS", "25"))
 
     # App
     DEBUG: bool = os.getenv("DEBUG", "true").lower() == "true"

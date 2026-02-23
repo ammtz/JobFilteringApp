@@ -3,7 +3,7 @@ Service for parsing job descriptions into structured requirements
 """
 import json
 from typing import Dict, Any, Optional
-from app.services.llm import openai_chat_json, LLMError
+from app.services.llm import claude_chat_json, LLMError
 
 
 def parse_job_description(raw_text: str, title: Optional[str] = None, company: Optional[str] = None) -> Dict[str, Any]:
@@ -53,7 +53,7 @@ Description:
 {raw_text[:8000]}"""
 
     try:
-        result = openai_chat_json([
+        result = claude_chat_json([
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ])

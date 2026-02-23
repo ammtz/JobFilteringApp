@@ -1,57 +1,89 @@
 """
-OpenAI-compatible chat API client. Works with OpenAI or any open-source/local
-server that exposes the same API (e.g. Ollama, LiteLLM, vLLM). For local servers,
-OPENAI_API_KEY can be empty if the endpoint does not require auth.
+Anthropic Claude API client.
+
+Requires ANTHROPIC_API_KEY set in environment (or .env file).
+Optionally set ANTHROPIC_MODEL to override the default (claude-opus-4-6).
 """
 import json
+import re
 from typing import Any, Dict, List
 
-import httpx
+import anthropic
 
 from app.core.config import settings
+
+_CODE_FENCE_RE = re.compile(r"^```(?:json)?\s*\n?(.*?)\n?```\s*$", re.DOTALL)
 
 
 class LLMError(Exception):
     """Raised when the LLM API request or response is invalid."""
 
 
-def _is_local_base_url(url: str) -> bool:
-    if not url:
-        return False
-    u = url.strip().lower()
-    return u.startswith("http://localhost/") or u.startswith("http://127.0.0.1/") or u.startswith("http://localhost:") or u.startswith("http://127.0.0.1:")
+def _strip_code_fence(text: str) -> str:
+    """Remove markdown code fences if Claude wraps JSON in them."""
+    match = _CODE_FENCE_RE.match(text.strip())
+    return match.group(1).strip() if match else text.strip()
 
 
-def _chat_headers() -> Dict[str, str]:
-    headers = {"Content-Type": "application/json"}
-    if settings.OPENAI_API_KEY:
-        headers["Authorization"] = f"Bearer {settings.OPENAI_API_KEY}"
-    elif not _is_local_base_url(settings.OPENAI_BASE_URL):
-        raise LLMError("OPENAI_API_KEY is required when using a non-local API base URL")
-    return headers
+def claude_chat_json(messages: List[Dict[str, str]]) -> Dict[str, Any]:
+    """
+    Send a list of messages to Claude and return the parsed JSON response.
 
+    A message with role "system" is lifted to Claude's top-level system param.
+    Uses streaming with get_final_message() to avoid timeout issues on large inputs.
 
-def openai_chat_json(messages: List[Dict[str, str]]) -> Dict[str, Any]:
-    url = f"{settings.OPENAI_BASE_URL.rstrip('/')}/chat/completions"
-    payload = {
-        "model": settings.OPENAI_MODEL,
-        "messages": messages,
-        "temperature": 0.2,
-        "response_format": {"type": "json_object"},
+    Args:
+        messages: List of {"role": "system"|"user"|"assistant", "content": str}
+
+    Returns:
+        Parsed JSON dict from Claude's text response.
+
+    Raises:
+        LLMError: API call failed, or response was not valid JSON.
+    """
+    if not settings.ANTHROPIC_API_KEY:
+        raise LLMError("ANTHROPIC_API_KEY is required for LLM features")
+
+    client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+
+    system: str | None = None
+    api_messages: List[Dict[str, str]] = []
+    for msg in messages:
+        if msg["role"] == "system":
+            system = msg["content"]
+        else:
+            api_messages.append({"role": msg["role"], "content": msg["content"]})
+
+    create_kwargs: Dict[str, Any] = {
+        "model": settings.ANTHROPIC_MODEL,
+        "max_tokens": 4096,
+        "messages": api_messages,
     }
-    try:
-        response = httpx.post(url, headers=_chat_headers(), json=payload, timeout=60)
-        response.raise_for_status()
-    except httpx.HTTPError as exc:
-        raise LLMError(f"LLM request failed: {exc}") from exc
-
-    data = response.json()
-    try:
-        content = data["choices"][0]["message"]["content"]
-    except (KeyError, IndexError, TypeError) as exc:
-        raise LLMError("LLM response format unexpected") from exc
+    if system:
+        create_kwargs["system"] = system
 
     try:
-        return json.loads(content)
+        with client.messages.stream(**create_kwargs) as stream:
+            response = stream.get_final_message()
+    except anthropic.APIError as exc:
+        raise LLMError(f"Claude API request failed: {exc}") from exc
+    except UnicodeEncodeError as exc:
+        raise LLMError(
+            f"ANTHROPIC_API_KEY contains non-ASCII characters (e.g. an em dash instead of a hyphen). "
+            f"Re-copy it from console.anthropic.com. Detail: {exc}"
+        ) from exc
+
+    text_content: str | None = None
+    for block in response.content:
+        if block.type == "text":
+            text_content = block.text
+            break
+
+    if text_content is None:
+        raise LLMError("Claude response contained no text block")
+
+    cleaned = _strip_code_fence(text_content)
+    try:
+        return json.loads(cleaned)
     except json.JSONDecodeError as exc:
-        raise LLMError("LLM response was not valid JSON") from exc
+        raise LLMError(f"Claude response was not valid JSON: {cleaned[:300]}") from exc

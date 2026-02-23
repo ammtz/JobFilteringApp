@@ -9,7 +9,7 @@ from flask import Blueprint, jsonify, request
 from app.core.database import get_db
 from app.models.job import Job
 from app.models.resume import Resume
-from app.services.llm import LLMError, openai_chat_json
+from app.services.llm import LLMError, claude_chat_json
 
 bp = Blueprint("cull", __name__)
 
@@ -114,7 +114,7 @@ def begin_cull():
         }
 
         try:
-            result = openai_chat_json([
+            result = claude_chat_json([
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": f"JSON input:\n{json.dumps(user_prompt)}"},
             ])

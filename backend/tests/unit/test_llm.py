@@ -1,23 +1,32 @@
-"""Unit tests for LLM module (local URL detection, no network)."""
+"""Unit tests for the LLM module (no network calls)."""
 import pytest
 
-from app.services.llm import _is_local_base_url
+from app.services.llm import LLMError, _strip_code_fence
 
 
-class TestIsLocalBaseUrl:
-    def test_localhost_http(self):
-        assert _is_local_base_url("http://localhost/") is True
-        assert _is_local_base_url("http://localhost:8080/v1") is True
-        assert _is_local_base_url("http://localhost:11434/v1") is True
+class TestStripCodeFence:
+    def test_plain_json_unchanged(self):
+        raw = '{"key": "value"}'
+        assert _strip_code_fence(raw) == raw
 
-    def test_127_0_0_1(self):
-        assert _is_local_base_url("http://127.0.0.1/") is True
-        assert _is_local_base_url("http://127.0.0.1:8000") is True
+    def test_strips_json_fence(self):
+        raw = '```json\n{"key": "value"}\n```'
+        assert _strip_code_fence(raw) == '{"key": "value"}'
 
-    def test_non_local(self):
-        assert _is_local_base_url("https://api.openai.com/v1") is False
-        assert _is_local_base_url("https://example.com") is False
+    def test_strips_generic_fence(self):
+        raw = '```\n{"key": "value"}\n```'
+        assert _strip_code_fence(raw) == '{"key": "value"}'
 
-    def test_empty_or_none(self):
-        assert _is_local_base_url("") is False
-        assert _is_local_base_url(None) is False
+    def test_leading_trailing_whitespace(self):
+        raw = '  ```json\n{"key": 1}\n```  '
+        assert _strip_code_fence(raw) == '{"key": 1}'
+
+
+class TestClaudeChatJsonNoKey:
+    def test_raises_when_no_api_key(self, monkeypatch):
+        from app.core import config
+        monkeypatch.setattr(config.settings, "ANTHROPIC_API_KEY", None)
+
+        from app.services.llm import claude_chat_json
+        with pytest.raises(LLMError, match="ANTHROPIC_API_KEY"):
+            claude_chat_json([{"role": "user", "content": "hello"}])

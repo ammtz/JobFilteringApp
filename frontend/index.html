@@ -33,34 +33,22 @@
         <section class="panel ingest">
           <div class="panel-head">
             <h2>Workspace</h2>
-            <p>Connect to your local API and manage your resume + parsing.</p>
+            <p>Manage your resume and run analysis.</p>
           </div>
 
-          <label class="field">
-            <span>API base URL</span>
-            <input id="apiBase" type="text" placeholder="http://localhost:8000" />
-          </label>
-
-          <div class="divider"></div>
-
-          <div class="panel-head">
-            <h3>Paste bookmarklet JSON</h3>
-            <p>If you use the bookmarklet (clipboard), paste the JSON here and ingest.</p>
-          </div>
-          <label class="field">
-            <span>Bookmarklet payload</span>
-            <textarea id="bookmarkletBox" rows="4" placeholder='{"v":1,"captured_at":"...","url":"...","page_title":"...","description_text":"..."}'></textarea>
-          </label>
-          <div class="actions">
-            <button class="secondary" id="ingestBookmarkletBtn" type="button">Ingest</button>
-            <span class="hint" id="bookmarkletStatus"></span>
-          </div>
+          <details class="settings-toggle">
+            <summary>⚙ Settings</summary>
+            <label class="field">
+              <span>API base URL</span>
+              <input id="apiBase" type="text" placeholder="http://localhost:5000" />
+            </label>
+          </details>
 
           <div class="divider"></div>
 
           <div class="panel-head">
             <h3>Resume context</h3>
-            <p>Upload a PDF resume. We extract text locally before sending.</p>
+            <p>Upload your PDF resume.</p>
           </div>
 
           <label class="field">
@@ -76,29 +64,40 @@
           <div class="divider"></div>
 
           <div class="panel-head">
-            <h3>Parse jobs</h3>
-            <p>Extract structured requirements from job descriptions.</p>
+            <h3>Sort Things</h3>
+            <p>Identify and sort critical information of each saved job.</p>
           </div>
 
           <div class="actions">
-            <button class="primary" id="parseAllBtn" type="button">Parse all jobs</button>
-            <button class="secondary" id="parseSelectedBtn" type="button">Parse selected</button>
-            <button class="secondary" id="forceParseAllBtn" type="button">Force re-parse all</button>
+            <button class="primary" id="parseAllBtn" type="button">Sort Things</button>
           </div>
 
           <div class="divider"></div>
 
           <div class="panel-head">
-            <h3>Begin the cull</h3>
-            <p>Rank all jobs by fit and pick the top 10.</p>
+            <h3>Training</h3>
+            <p>Compare two jobs head-to-head to train your personal scoring model.</p>
           </div>
 
           <div class="actions">
-            <button class="primary" id="cullAllBtn" type="button">Begin the cull</button>
-            <button class="secondary" id="cullSelectedBtn" type="button">Cull selected</button>
+            <button class="primary" id="abCompareBtn" type="button">Start Training</button>
           </div>
 
-          <div class="hint" id="selectionHint">0 selected</div>
+          <div class="divider"></div>
+
+          <div class="panel-head">
+            <h3>Rank Jobs</h3>
+            <p>Rank jobs by user preference and job affinity.</p>
+          </div>
+
+          <div class="actions">
+            <button class="primary" id="cullAllBtn" type="button">Rank Jobs</button>
+          </div>
+
+          <div class="selection-bar">
+            <span class="hint" id="selectionHint">0 selected</span>
+            <button class="danger hide" id="deleteSelectedBtn" type="button">Delete all selected</button>
+          </div>
 
           <div class="divider"></div>
 
@@ -119,6 +118,19 @@
           <div class="job-list" id="jobList"></div>
         </section>
       </main>
+    </div>
+
+    <div class="modal hidden" id="abModal" aria-hidden="true">
+      <div class="ab-modal-card">
+        <div class="modal-head">
+          <h3 id="abStatus">Which role fits you better?</h3>
+          <div class="actions small">
+            <button class="secondary" id="abSkipBtn" type="button">Skip pair</button>
+            <button class="ghost" id="abCloseBtn" type="button">Close</button>
+          </div>
+        </div>
+        <div class="ab-comparison" id="abComparison"></div>
+      </div>
     </div>
 
     <div class="modal hidden" id="detailModal" aria-hidden="true">
